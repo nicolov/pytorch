@@ -290,6 +290,7 @@ expanding the :math:`i` :sup:`th` input over dimensions defined by other inputs.
     return torch._C._VariableFunctions.meshgrid(tensors)
 
 
+_VF_stft = torch._C._VariableFunctions.stft
 
 def stft(input, n_fft, hop_length=None, win_length=None, window=None,
          center=True, pad_mode='reflect', normalized=False, onesided=True):
@@ -374,10 +375,11 @@ def stft(input, n_fft, hop_length=None, win_length=None, window=None,
         Tensor: A tensor containing the STFT result with shape described above
 
     """
-    if type(input) is not Tensor and has_torch_function((input,)):
-        return handle_torch_function(
-            stft, (input,), input, n_fft, hop_length=hop_length, win_length=win_length, window=window,
-            center=center, pad_mode=pad_mode, normalized=normalized, onesided=onesided)
+    if not torch.jit.is_scripting():
+        if type(input) is not Tensor and has_torch_function((input,)):
+            return handle_torch_function(
+                stft, (input,), input, n_fft, hop_length=hop_length, win_length=win_length, window=window,
+                center=center, pad_mode=pad_mode, normalized=normalized, onesided=onesided)
     # TODO: after having proper ways to map Python strings to ATen Enum, move
     #       this and F.pad to ATen.
     if center:
@@ -386,7 +388,7 @@ def stft(input, n_fft, hop_length=None, win_length=None, window=None,
         pad = int(n_fft // 2)
         input = F.pad(input.view(extended_shape), (pad, pad), pad_mode)
         input = input.view(input.shape[-signal_dim:])
-    return torch._C._VariableFunctions.stft(input, n_fft, hop_length, win_length, window, normalized, onesided)
+    return _VF_stft(input, n_fft, hop_length, win_length, window, normalized, onesided)
 
 
 del torch.unique_dim
